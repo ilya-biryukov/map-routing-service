@@ -197,11 +197,12 @@ inline size_t mutable_graph_t::update_indicies()
   return i;
 }
 
-namespace bfs = boost::filesystem;
-namespace interproc = boost::interprocess;
 inline void mutable_graph_t::dump_to_file(std::string const & filename)
-{ 
-  if (!boost::filesystem::exists(filename))
+{
+  namespace boostfs = boost::filesystem3;
+  namespace boostinterp = boost::interprocess;  
+  
+  if (!boostfs::exists(filename))
   {
     std::ofstream file(filename.c_str());
   }
@@ -211,10 +212,10 @@ inline void mutable_graph_t::dump_to_file(std::string const & filename)
     + sizeof(details::raw_vertex_t) * vertices_count
     + sizeof(details::raw_edges_header_t)
     + sizeof(details::raw_edge_t) * edges_count_ ;
-  boost::filesystem::resize_file(filename, size_needed);
+  boostfs::resize_file(filename, size_needed);
   
-  interproc::file_mapping mapping(filename.c_str(), interproc::read_write);
-  interproc::mapped_region region(mapping, interproc::read_write, 0, size_needed);
+  boostinterp::file_mapping mapping(filename.c_str(), boostinterp::read_write);
+  boostinterp::mapped_region region(mapping, boostinterp::read_write, 0, size_needed);
   
   details::raw_vertices_header_t * vertices_header = static_cast<details::raw_vertices_header_t *>(region.get_address());  
   vertices_header->vertices_count = vertices_count;

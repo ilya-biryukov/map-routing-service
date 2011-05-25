@@ -1,3 +1,4 @@
+#include <iostream>
 #include <QtGui/QtGui>
 #include <QtCore/QtCore>
 #include <QStackedLayout>
@@ -7,9 +8,15 @@
 
 int main(int argc, char ** argv)
 {
+  if (argc < 2)
+  {
+    std::cout << "Usage: graph_visualizer path_to_graph" << std::endl;
+    return 0;
+  }
+  
   QApplication app(argc, argv);
   
-  graph_t graph("/home/sa1nt/temp/graph/stpeter.graph");
+  graph_t graph(argv[1]);
 
 //  QWidget mainWidget;
   
