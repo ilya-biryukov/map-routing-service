@@ -199,7 +199,7 @@ struct expat_parser_t: base_expat_parser_t<expat_parser_t>
   static size_t const DEFAULT_BUFFER_SIZE = 65536; // 64K
 
   expat_parser_t(mutable_graph_t & graph, std::istream * input, size_t buffer_size = DEFAULT_BUFFER_SIZE) :
-    base_expat_parser_t(input, buffer_size),
+    base_expat_parser_t<expat_parser_t>(input, buffer_size),
     graph_(graph),
     unreported_tags_(0)
   {
