@@ -6,6 +6,9 @@ I. Libraries.
   libjson
     Homepage: http://sourceforge.net/projects/libjson/
     Download: http://sourceforge.net/projects/libjson/files/libjson_7.1.1.zip/download
+    You should comment line in JSONOptions.h, containing
+      #define JSON_LIBRARY
+    It is a switch between C and C++ library interface    
 
   Qt Framework(for graph_visualizer)
     Homepage: http://qt.nokia.com/
