@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+        html 
+        { 
+            height: 100% 
+        }
+        body 
+        { 
+            height: 100%; 
+            margin: 0px; 
+            padding: 0px 
+        }
+        #map_canvas 
+        { 
+            height: 500px; 
+            width: 800px; 
+            border: solid 2px black; 
+        }
+        #title 
+        { 
+            font-weight: bold; 
+            font-size: x-large; 
+            color: #3399CC; 
+            padding: 5px 5px 5px 5px 
+        } 
+        #message_box 
+        { 
+            position: absolute; 
+            width: 300px; 
+            height: 150px; 
+            left: 50%; 
+            top: 50%; 
+            margin: -75px 0px 0px -150px;
+            padding: 10px 5px 5px 10px; 
+            border: solid black; 
+            background: white;
+        }
+    </style>
+    <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+    <script type="text/javascript" src="scripts/jquery-1.5.js"></script>
+    <script type="text/javascript">
+        var MapController = {
+                startMarker: {},
+                endMarker: {},                
+                pathPolyline: {},
+                map: {},
+                waitingPath: false,
+                drawPath: function(points) {
+                    $.each(this.edgesPolylines, function (i, polyline) {
+                        polyline.setMap(null)
+                    });
+
+                    var that = this;
+                    this.edgesPolylines = $.map(points["edges_source"].concat(points["edges_destination"]), 
+                            function (e) { return new google.maps.Polyline({
+                                strokeColor: "#00FF00",
+                                strokeOpacity: 0.4,
+                                strokeWeight: 2,
+                                path: [new google.maps.LatLng(e[0][1], e[0][0]), new google.maps.LatLng(e[1][1], e[1][0])],
+                                map: that.map
+                            	})
+                            });
+                         
+                    
+                    var latLngs = $.map(points["path"], function(pt) { return new google.maps.LatLng(pt[1], pt[0]); });                                            
+                    this.pathPolyline.setPath(latLngs);
+                    this.pathPolyline.setMap(this.map);
+                },
+                init: function() {
+                    var pos = new google.maps.LatLng(59.966010, 30.309906);
+                    var options = {
+                            zoom: 14,
+                            center: pos,                            
+                   	  	  	mapTypeId: 'OSM',
+                   	  	    mapTypeControlOptions: {
+                    	  	  mapTypeIds: ['OSM', google.maps.MapTypeId.ROADMAP],
+                    	  	  style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
+                    	  	}
+                                                                
+                    };
+                    var osmMapType = new google.maps.ImageMapType({
+                    	getTileUrl: function(coord, zoom) {
+                    		return "http://tile.openstreetmap.org/" +
+                    		zoom + "/" + coord.x + "/" + coord.y + ".png";
+                    	},
+                    	tileSize: new google.maps.Size(256, 256),
+                    	isPng: true,
+                    	alt: "OpenStreetMap layer",
+                    	name: "OpenStreetMap",
+                    	maxZoom: 19
+                    });                                        
+                    this.map = new google.maps.Map($("#map_canvas").get(0), options);
+                	this.map.mapTypes.set('OSM', osmMapType);
+                	this.map.setMapTypeId('OSM');
+                                	
+                                    
+                    this.startMarker = new google.maps.Marker({                        
+                        draggable: true,
+                        position: pos,
+                        title: "Start"                            
+                    });
+                    var that = this;
+                    google.maps.event.addListener(this.startMarker, 'dragstart', function() {
+                        that.pathPolyline.setMap(null);                        
+                    });
+                    google.maps.event.addListener(this.startMarker, 'dragend', function(e)
+                    {
+                        if (that.isEndMarkerDropped())
+                        {
+                            that.getShortestPath();
+                        }
+                    });                 
+                    this.endMarker = new google.maps.Marker({                        
+                        draggable: true,
+                        position: pos,
+                        title: "End"
+                    });
+                    google.maps.event.addListener(this.endMarker, 'dragstart', function() {
+                        that.pathPolyline.setMap(null);
+                    });
+                    google.maps.event.addListener(this.endMarker, 'dragend', function(e) {
+                        that.getShortestPath();                       
+                    });
+                    this.pathPolyline = new google.maps.Polyline({
+                        strokeColor: "#0000FF",
+                        strokeOpacity: 1.0,
+                        strokeWeight: 3
+                    });
+
+                    this.edgesPolylines = [];
+                    google.maps.event.addListener(this.map, 'click', function (e) {
+                        if (!that.isStartMarkerDropped())
+                        {
+                            that.dropStartMarker(e.latLng);
+                        }
+                        else if (!that.isEndMarkerDropped())
+                        {
+                            that.dropEndMarker(e.latLng);
+                            that.getShortestPath();
+                        }
+                    });
+                },
+                getShortestPath: function() {
+                    if (this.waitingPath)                    
+                        return;
+                    this.pathPolyline.setMap(null);
+                    this.waitingPath = true;
+                    this.startMarker.setDraggable(false);
+                    this.endMarker.setDraggable(false);
+                    var that = this;
+                    $("#status").show(500);                    
+                    $.ajax({
+                        url: "shortest-paths/",
+                        data: {
+                            lat1: this.startMarker.position.lat(),
+                            lng1: this.startMarker.position.lng(),
+                            lat2: this.endMarker.position.lat(),
+                            lng2: this.endMarker.position.lng()                            
+                        },
+                        success: function(data) {
+                            that.drawPath(data);
+                            that.waitingPath = false;
+                            $("#status").hide(500);                            
+                            that.startMarker.setDraggable(true);
+                            that.endMarker.setDraggable(true);
+                        },
+                        error: function()
+                        {
+                            that.waitingPath = false;
+                            messageBox("<b>Error occured</b>");
+                            $("#status").hide(500);
+                            that.startMarker.setDraggable(true);
+                            that.endMarker.setDraggable(true);                                    
+                        }                            
+                        });
+                },
+                dropStartMarker: function(pt) {
+                    this.startMarker.setAnimation(google.maps.Animation.DROP);
+                    this.startMarker.setPosition(pt);
+                    this.startMarker.setMap(this.map);
+                },
+                dropEndMarker: function(pt) {
+                    this.endMarker.setAnimation(google.maps.Animation.DROP);
+                    this.endMarker.setPosition(pt);
+                    this.endMarker.setMap(this.map);
+                },
+                isStartMarkerDropped: function() {
+                    return this.startMarker.getMap() == this.map;
+                },
+                isEndMarkerDropped: function() {
+                    return this.endMarker.getMap() == this.map;
+                },
+                clearMap: function() {
+                    this.deletePathMarkers();
+                    this.startMarker.setMap(null);
+                    this.endMarker.setMap(null);                    
+                }
+                
+        };
+    
+        function init()
+        {
+            MapController.init();
+                                    
+            $("#message_box").click(function() {
+                $("#message_box").hide(500);
+            });                                
+        }
+        
+        function messageBox(text)
+        {                            
+            $("#message_box").html(text).show(500)
+        }        
+
+        $(document).ready(init);
+    </script>
+    <title>Shortest paths</title>    
+</head>
+<body>
+    <center>
+        <div id="title">Shortest paths</div>
+        <div id="map_canvas"></div>
+        <div id="message_box" style="display: none"></div>
+        <div id="status" style="display: none">Processing...</div>
+    </center>
+</body>
+</html>

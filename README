@@ -1,0 +1,58 @@
+I. Libraries.
+  fastcgi++
+    Homepage: https://savannah.nongnu.org/projects/fastcgipp/
+    Download: http://download.savannah.nongnu.org/releases/fastcgipp/fastcgi++-2.0beta-07b0d54d.tar.bz2
+
+  libjson
+    Homepage: http://sourceforge.net/projects/libjson/
+    Download: http://sourceforge.net/projects/libjson/files/libjson_7.1.1.zip/download
+
+  Qt Framework(for graph_visualizer)
+    Homepage: http://qt.nokia.com/
+    
+  Boost Library 
+    Homepage: http://boost.org/
+
+
+II. CMake
+  CMake(http://cmake.org) is used for building this project.
+
+  Generally, you should do something like this to make it work:
+    mkdir {build_dir}
+    cmake {project_dir} {build_dir}
+  {build_dir} and {project_dir} are just placeholders for pathes to
+  build directory and project directory, respectively. 
+
+  A better approach would be to use cmake tools with GUI:
+    ccmake
+    cmake-gui
+
+  If cmake won't be able to find some of the libraries you will have
+  to set their locations explicitly. The best approach for this is 
+  running ccmake or cmake-gui inside build directory.
+
+
+III. Installing 
+  To get shortest_paths web service running you'll have to configure
+  web server.
+
+  This covers configuring lighttpd:
+    Edit lighttpd.conf (typically located in /etc/lighttpd) in the 
+    following ways:
+      1) Add mod_fastcgi to server.modules
+      2) Include following lines to the end of file:
+        fastcgi.server = ( 
+            "/shortest-paths/" =>
+                (( "host" => "127.0.0.1",
+                   "port" => 1026,
+                   "check-local" => "disable"
+                  ))  
+                )
+    Then copy files from static_content folder to http server root
+    directory(typically /var/www) and restart lighttpd.
+
+  After you compile shortest_paths you'll have to run it using 
+  spawn-fcgi:
+    spawn-fcgi -p 1026 -- ./shortest-paths {path-to-graph}
+  Here, {path-to-graph} is a placeholder to a file that was produced
+  by osm_converter utility.
